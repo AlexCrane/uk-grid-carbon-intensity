@@ -1,7 +1,7 @@
 # carbonintensity
 
 ```go
-import "github.com\AlexCrane\uk-grid-carbon-intensity"
+import "github.com/AlexCrane/uk-grid-carbon-intensity"
 ```
 
 Package carbonintensity provides a wrapper around the national grid carbon
