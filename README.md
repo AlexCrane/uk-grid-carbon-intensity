@@ -1,13 +1,13 @@
 # carbonintensity
 
-```go
-import "github.com/AlexCrane/uk-grid-carbon-intensity"
-```
-
 Package carbonintensity provides a wrapper around the national grid carbon
 intensity API - see https://api.carbonintensity.org.uk/
 
 ## Usage
+
+```go
+import "github.com/AlexCrane/uk-grid-carbon-intensity"
+```
 
 #### type APIHandler
 
