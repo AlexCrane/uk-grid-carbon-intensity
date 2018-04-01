@@ -57,7 +57,6 @@ func TestOtherDayAndSettlementPeriodIntensity(t *testing.T) {
 	t.Logf("%v\n", intensity)
 
 	intensity, err = handler.GetIntensityForDayAndSettlementPeriod(time.Now().Add(-24*time.Hour), 48)
-	// This will only work if you are in GMT timezone and so is a terrible test :D
 	assert.Equal(t, 23, intensity.From.In(london).Hour())
 	assert.Equal(t, 30, intensity.From.In(london).Minute())
 	assert.Equal(t, 0, intensity.To.In(london).Hour())
