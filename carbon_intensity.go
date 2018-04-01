@@ -17,7 +17,7 @@ const (
 	indexHigh     = "high"
 )
 
-type ApiHandler struct {
+type APIHandler struct {
 	serverAddress string
 }
 
@@ -71,13 +71,13 @@ type IntensityFactors struct {
 	Wind             int
 }
 
-func NewCarbonIntensityApiHandler() *ApiHandler {
-	return newCarbonIntensityApiHandlerInternal(natGridServerAddress)
+func NewCarbonIntensityAPIHandler() *APIHandler {
+	return newCarbonIntensityAPIHandlerInternal(natGridServerAddress)
 }
 
 // Allow for a test server to be provided
-func newCarbonIntensityApiHandlerInternal(serverAddress string) *ApiHandler {
-	return &ApiHandler{
+func newCarbonIntensityAPIHandlerInternal(serverAddress string) *APIHandler {
+	return &APIHandler{
 		serverAddress: serverAddress,
 	}
 }
@@ -99,10 +99,10 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 	if decoded["data"] == nil {
 		if decoded["error"] == nil {
 			return fmt.Errorf("Failed to unmarshal JSON; %s", string(data))
-		} else {
-			errorMap := decoded["error"].(map[string]interface{})
-			return fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 		}
+
+		errorMap := decoded["error"].(map[string]interface{})
+		return fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 	}
 
 	decodedData := decoded["data"].([]interface{})
@@ -143,7 +143,7 @@ func (ie *IntensityEntry) String() string {
 		ie.Intensity.Forecast, ie.Intensity.Actual, ie.Intensity.Index)
 }
 
-func (ah *ApiHandler) getApiResponse(resource string) ([]byte, error) {
+func (ah *APIHandler) getAPIResponse(resource string) ([]byte, error) {
 	resp, err := http.Get(fmt.Sprintf("%s%s", ah.serverAddress, resource))
 	if err != nil {
 		return nil, err
@@ -153,10 +153,10 @@ func (ah *ApiHandler) getApiResponse(resource string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (ah *ApiHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, error) {
+func (ah *APIHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, error) {
 	year, month, day := date.Date()
 
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d", year, month, day))
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d", year, month, day))
 	if err != nil {
 		return nil, err
 	}
@@ -169,10 +169,10 @@ func (ah *ApiHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, err
 	return response.entries, nil
 }
 
-func (ah *ApiHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, settlementPeriod int) (*IntensityEntry, error) {
+func (ah *APIHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, settlementPeriod int) (*IntensityEntry, error) {
 	year, month, day := date.Date()
 
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d/%d", year, month, day, settlementPeriod))
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d/%d", year, month, day, settlementPeriod))
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +189,12 @@ func (ah *ApiHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, sett
 	return response.entries[0], nil
 }
 
-func (ah *ApiHandler) GetTodaysIntensity() ([]*IntensityEntry, error) {
+func (ah *APIHandler) GetTodaysIntensity() ([]*IntensityEntry, error) {
 	return ah.GetIntensityForDay(time.Now())
 }
 
-func (ah *ApiHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/%s", time.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s", time.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -211,12 +211,12 @@ func (ah *ApiHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry
 	return response.entries[0], nil
 }
 
-func (ah *ApiHandler) GetCurrentIntensity() (*IntensityEntry, error) {
+func (ah *APIHandler) GetCurrentIntensity() (*IntensityEntry, error) {
 	return ah.GetIntensityForTimePeriod(time.Now())
 }
 
-func (ah *ApiHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*IntensityEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*IntensityEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +232,8 @@ func (ah *ApiHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*Inte
 // The following three could easily be implemented using GetIntensityBetween , but as they are
 // specific resources provided by the REST API, let's have them using those specific resources
 
-func (ah *ApiHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/%s/fw24h", from.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/fw24h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -246,8 +246,8 @@ func (ah *ApiHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry,
 	return response.entries, nil
 }
 
-func (ah *ApiHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/%s/fw48h", from.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/fw48h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -260,8 +260,8 @@ func (ah *ApiHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry,
 	return response.entries, nil
 }
 
-func (ah *ApiHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/%s/pt24h", from.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/pt24h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -274,8 +274,8 @@ func (ah *ApiHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry
 	return response.entries, nil
 }
 
-func (ah *ApiHandler) GetIntensityFactors() (*IntensityFactors, error) {
-	responseBytes, err := ah.getApiResponse("/intensity/factors")
+func (ah *APIHandler) GetIntensityFactors() (*IntensityFactors, error) {
+	responseBytes, err := ah.getAPIResponse("/intensity/factors")
 	if err != nil {
 		return nil, err
 	}
@@ -288,10 +288,10 @@ func (ah *ApiHandler) GetIntensityFactors() (*IntensityFactors, error) {
 	if response["data"] == nil {
 		if response["error"] == nil {
 			return nil, fmt.Errorf("Failed to unmarshal JSON; %s", string(responseBytes))
-		} else {
-			errorMap := response["error"].(map[string]interface{})
-			return nil, fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 		}
+
+		errorMap := response["error"].(map[string]interface{})
+		return nil, fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 	}
 
 	responseData := response["data"].([]interface{})
@@ -329,10 +329,10 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 	if decoded["data"] == nil {
 		if decoded["error"] == nil {
 			return fmt.Errorf("Failed to unmarshal JSON; %s", string(data))
-		} else {
-			errorMap := decoded["error"].(map[string]interface{})
-			return fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 		}
+
+		errorMap := decoded["error"].(map[string]interface{})
+		return fmt.Errorf("API error; Code: %s Message: %s", errorMap["code"].(string), errorMap["message"].(string))
 	}
 
 	decodedData := decoded["data"].([]interface{})
@@ -374,8 +374,8 @@ func (se *StatisticsEntry) String() string {
 		se.Stats.Max, se.Stats.Average, se.Stats.Min, se.Stats.Index)
 }
 
-func (ah *ApiHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/stats/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
+func (ah *APIHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/stats/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
 	}
@@ -392,8 +392,8 @@ func (ah *ApiHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEn
 	return response.entries[0], nil
 }
 
-func (ah *ApiHandler) GetStatisticsInBlocks(from time.Time, to time.Time, blockSize time.Duration) ([]*StatisticsEntry, error) {
-	responseBytes, err := ah.getApiResponse(fmt.Sprintf("/intensity/stats/%s/%s/%d", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat), int(blockSize.Hours())))
+func (ah *APIHandler) GetStatisticsInBlocks(from time.Time, to time.Time, blockSize time.Duration) ([]*StatisticsEntry, error) {
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/stats/%s/%s/%d", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat), int(blockSize.Hours())))
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,7 @@ import (
 // Other tests should be written to point at a test server that will return known data that we can check we are correctly parsing
 
 func TestCurrentIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensity, err := handler.GetCurrentIntensity()
 	assert.NoError(t, err)
@@ -19,19 +19,19 @@ func TestCurrentIntensity(t *testing.T) {
 }
 
 func TestOtherTimePeriodsIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
-	intensity, err := handler.GetIntensityForTimePeriod(time.Now().Add(8*time.Hour))
+	intensity, err := handler.GetIntensityForTimePeriod(time.Now().Add(8 * time.Hour))
 	assert.NoError(t, err)
 	t.Logf("%v\n", intensity)
 
-	intensity, err = handler.GetIntensityForTimePeriod(time.Now().Add(-8*time.Hour))
+	intensity, err = handler.GetIntensityForTimePeriod(time.Now().Add(-8 * time.Hour))
 	assert.NoError(t, err)
 	t.Logf("%v\n", intensity)
 }
 
 func TestOtherDayAndSettlementPeriodIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	// The day is split into 48 half-hour settlement periods
 	// Joyfully (and perhaps obviously) the periods of the day follow local time (and so British Summer Time)
@@ -39,7 +39,7 @@ func TestOtherDayAndSettlementPeriodIntensity(t *testing.T) {
 	// Fortunately time.In() is a pretty sweet function!
 	london, err := time.LoadLocation("Europe/London")
 	assert.NoError(t, err)
-	
+
 	intensity, err := handler.GetIntensityForDayAndSettlementPeriod(time.Now().Add(-24*time.Hour), 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, intensity.From.In(london).Hour())
@@ -73,7 +73,7 @@ func TestOtherDayAndSettlementPeriodIntensity(t *testing.T) {
 }
 
 func TestTodaysIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensityArr, err := handler.GetTodaysIntensity()
 	assert.NoError(t, err)
@@ -83,7 +83,7 @@ func TestTodaysIntensity(t *testing.T) {
 }
 
 func TestOtherDaysIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensityArr, err := handler.GetIntensityForDay(time.Now().Add(24 * time.Hour))
 	assert.NoError(t, err)
@@ -99,9 +99,9 @@ func TestOtherDaysIntensity(t *testing.T) {
 }
 
 func TestIntensityBetween(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
-	intensityArr, err := handler.GetIntensityBetween(time.Now().Add(-24 * time.Hour), time.Now().Add(24 * time.Hour))
+	intensityArr, err := handler.GetIntensityBetween(time.Now().Add(-24*time.Hour), time.Now().Add(24*time.Hour))
 	assert.NoError(t, err)
 	for _, intensity := range intensityArr {
 		t.Logf("%v\n", intensity)
@@ -109,7 +109,7 @@ func TestIntensityBetween(t *testing.T) {
 }
 
 func TestNext24HourIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensityArr, err := handler.GetNext24HourIntensity(time.Now())
 	assert.NoError(t, err)
@@ -119,7 +119,7 @@ func TestNext24HourIntensity(t *testing.T) {
 }
 
 func TestNext48HourIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensityArr, err := handler.GetNext48HourIntensity(time.Now())
 	assert.NoError(t, err)
@@ -129,7 +129,7 @@ func TestNext48HourIntensity(t *testing.T) {
 }
 
 func TestPrior24HourIntensity(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	intensityArr, err := handler.GetPrior24HourIntensity(time.Now())
 	assert.NoError(t, err)
@@ -139,7 +139,7 @@ func TestPrior24HourIntensity(t *testing.T) {
 }
 
 func TestIntensityFactors(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	factors, err := handler.GetIntensityFactors()
 	assert.NoError(t, err)
@@ -147,19 +147,19 @@ func TestIntensityFactors(t *testing.T) {
 }
 
 func TestStatistics(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	// Let's try a week of stats
-	stats, err := handler.GetStatistics(time.Now().Add(time.Hour * (24 * -7)), time.Now())
+	stats, err := handler.GetStatistics(time.Now().Add(time.Hour*(24*-7)), time.Now())
 	assert.NoError(t, err)
 	t.Logf("%v\n", stats)
 }
 
 func TestStatisticsInBlocks(t *testing.T) {
-	handler := NewCarbonIntensityApiHandler()
+	handler := NewCarbonIntensityAPIHandler()
 
 	// Let's try a week of stats, in 4 hour blocks
-	statsArr, err := handler.GetStatisticsInBlocks(time.Now().Add(time.Hour * (24 * -7)), time.Now(), time.Hour * 4)
+	statsArr, err := handler.GetStatisticsInBlocks(time.Now().Add(time.Hour*(24*-7)), time.Now(), time.Hour*4)
 	assert.NoError(t, err)
 	assert.Equal(t, 42, len(statsArr))
 	for _, stats := range statsArr {
