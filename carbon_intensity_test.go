@@ -106,6 +106,18 @@ func TestIntensityBetween(t *testing.T) {
 	for _, intensity := range intensityArr {
 		t.Logf("%v\n", intensity)
 	}
+
+	// to and from equal, should return error
+	intensityArr, err = handler.GetIntensityBetween(time.Now(), time.Now())
+	assert.Error(t, err)
+
+	// to before from, should return error
+	intensityArr, err = handler.GetIntensityBetween(time.Now().Add(48*time.Hour), time.Now().Add(24*time.Hour))
+	assert.Error(t, err)
+
+	// > 30 day period, should return error
+	intensityArr, err = handler.GetIntensityBetween(time.Now().Add(-24*31*time.Hour), time.Now())
+	assert.Error(t, err)
 }
 
 func TestNext24HourIntensity(t *testing.T) {
@@ -113,6 +125,7 @@ func TestNext24HourIntensity(t *testing.T) {
 
 	intensityArr, err := handler.GetNext24HourIntensity(time.Now())
 	assert.NoError(t, err)
+	t.Log(len(intensityArr))
 	for _, intensity := range intensityArr {
 		t.Logf("%v\n", intensity)
 	}
@@ -123,6 +136,7 @@ func TestNext48HourIntensity(t *testing.T) {
 
 	intensityArr, err := handler.GetNext48HourIntensity(time.Now())
 	assert.NoError(t, err)
+	t.Log(len(intensityArr))
 	for _, intensity := range intensityArr {
 		t.Logf("%v\n", intensity)
 	}
@@ -153,6 +167,18 @@ func TestStatistics(t *testing.T) {
 	stats, err := handler.GetStatistics(time.Now().Add(time.Hour*(24*-7)), time.Now())
 	assert.NoError(t, err)
 	t.Logf("%v\n", stats)
+
+	// to and from equal, should return error
+	stats, err = handler.GetStatistics(time.Now(), time.Now())
+	assert.Error(t, err)
+
+	// to before from, should return error
+	stats, err = handler.GetStatistics(time.Now().Add(48*time.Hour), time.Now().Add(24*time.Hour))
+	assert.Error(t, err)
+
+	// > 30 day period, should return error
+	stats, err = handler.GetStatistics(time.Now().Add(-24*31*time.Hour), time.Now())
+	assert.Error(t, err)
 }
 
 func TestStatisticsInBlocks(t *testing.T) {
@@ -165,4 +191,24 @@ func TestStatisticsInBlocks(t *testing.T) {
 	for _, stats := range statsArr {
 		t.Logf("%v\n", stats)
 	}
+
+	// to and from equal, should return error
+	statsArr, err = handler.GetStatisticsInBlocks(time.Now(), time.Now(), time.Hour*4)
+	assert.Error(t, err)
+
+	// to before from, should return error
+	statsArr, err = handler.GetStatisticsInBlocks(time.Now().Add(48*time.Hour), time.Now().Add(24*time.Hour), time.Hour*4)
+	assert.Error(t, err)
+
+	// > 30 day period, should return error
+	statsArr, err = handler.GetStatisticsInBlocks(time.Now().Add(-24*31*time.Hour), time.Now(), time.Hour*4)
+	assert.Error(t, err)
+
+	// 0 hour blockSize, should return error
+	statsArr, err = handler.GetStatisticsInBlocks(time.Now().Add(time.Hour*(24*-7)), time.Now(), time.Minute*59)
+	assert.Error(t, err)
+
+	// 24 hour blockSize, should return error
+	statsArr, err = handler.GetStatisticsInBlocks(time.Now().Add(time.Hour*(24*-7)), time.Now(), time.Hour*25)
+	assert.Error(t, err)
 }

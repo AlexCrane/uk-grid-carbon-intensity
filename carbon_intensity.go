@@ -1,3 +1,4 @@
+// Package carbonintensity provides a wrapper around the national grid carbon intensity API - see https://api.carbonintensity.org.uk/
 package carbonintensity
 
 import (
@@ -12,48 +13,54 @@ const (
 	natGridServerAddress = "https://api.carbonintensity.org.uk"
 	natGridTimeFormat    = "2006-01-02T15:04Z07:00"
 
+	indexVeryLow  = "very low"
 	indexLow      = "low"
 	indexModerate = "moderate"
 	indexHigh     = "high"
+	indexVeryHigh = "very high"
 )
 
+// APIHandler is the struct which provides functions for querying the carbon intensity API
 type APIHandler struct {
 	serverAddress string
 }
 
 type intensityResponse struct {
-	entries []*IntensityEntry
+	entries []*Intensity
 }
 
-type IntensityEntry struct {
-	From      time.Time
-	To        time.Time
-	Intensity Intensity
-}
-
+// Intensity respresents a result from the 'national carbon intensity' party of the API
+// It represents forecast and estimated actual carbon intensity for a period of time, given by From and To
+// Forecast and Actual are in units of gCO2/KWh
+// Index is a string in the set { indexVeryLow, indexLow, indexModerate, indexHigh, indexVeryHigh }
+// For period in the future, Forecast will be set but Actual wont be - it will be set to -1. In this case Index will be based off the forecast.
 type Intensity struct {
+	From     time.Time
+	To       time.Time
 	Forecast int
 	Actual   int
 	Index    string
 }
 
 type statisticsResponse struct {
-	entries []*StatisticsEntry
+	entries []*Statistics
 }
 
-type StatisticsEntry struct {
-	From  time.Time
-	To    time.Time
-	Stats Statistics
-}
-
+// Statistics respresents a result from the 'national statistics' for a period of time, given by From and To
+// Max Average and Min are the obvious statistical values for carbon intensity over the given period, in units of gCO2/Kwh
+// Index is a string in the set { indexVeryLow, indexLow, indexModerate, indexHigh, indexVeryHigh }
+// Future periods use forecast data. Past data uses actual data.
 type Statistics struct {
+	From    time.Time
+	To      time.Time
 	Max     int
 	Average int
 	Min     int
 	Index   string
 }
 
+// IntensityFactors represents Carbon intensity factors used for different fuel types in the carbon intensity estimations
+// Units are gCO2/KWh (grams of CO2 per kilowatt hour)
 type IntensityFactors struct {
 	Biomass          int
 	Coal             int
@@ -71,6 +78,7 @@ type IntensityFactors struct {
 	Wind             int
 }
 
+// NewCarbonIntensityAPIHandler returns an APIHandler ready to make queries of the national grid carbon intensity API server
 func NewCarbonIntensityAPIHandler() *APIHandler {
 	return newCarbonIntensityAPIHandlerInternal(natGridServerAddress)
 }
@@ -106,7 +114,7 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 	}
 
 	decodedData := decoded["data"].([]interface{})
-	ir.entries = make([]*IntensityEntry, 0, len(decodedData))
+	ir.entries = make([]*Intensity, 0, len(decodedData))
 
 	for _, value := range decodedData {
 		decodedDataEntry := value.(map[string]interface{})
@@ -123,13 +131,11 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 
 		decodedIntensity := decodedDataEntry["intensity"].(map[string]interface{})
 
-		newEntry := &IntensityEntry{To: toTime,
-			From: fromTime,
-			Intensity: Intensity{
-				Forecast: unmarshalInt(decodedIntensity["forecast"], -1),
-				Actual:   unmarshalInt(decodedIntensity["actual"], -1),
-				Index:    decodedIntensity["index"].(string),
-			},
+		newEntry := &Intensity{To: toTime,
+			From:     fromTime,
+			Forecast: unmarshalInt(decodedIntensity["forecast"], -1),
+			Actual:   unmarshalInt(decodedIntensity["actual"], -1),
+			Index:    decodedIntensity["index"].(string),
 		}
 
 		ir.entries = append(ir.entries, newEntry)
@@ -138,9 +144,9 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (ie *IntensityEntry) String() string {
-	return fmt.Sprintf("%s -> %s {forecast: %d, actual: %d, index: %s}", ie.From.Format(natGridTimeFormat), ie.To.Format(natGridTimeFormat),
-		ie.Intensity.Forecast, ie.Intensity.Actual, ie.Intensity.Index)
+func (ie *Intensity) String() string {
+	return fmt.Sprintf("%s -> %s {forecast: %d, actual: %d, index: %s}", ie.From.Format(natGridTimeFormat),
+		ie.To.Format(natGridTimeFormat), ie.Forecast, ie.Actual, ie.Index)
 }
 
 func (ah *APIHandler) getAPIResponse(resource string) ([]byte, error) {
@@ -153,7 +159,8 @@ func (ah *APIHandler) getAPIResponse(resource string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (ah *APIHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, error) {
+// GetIntensityForDay returns an array of Intensity objects, for all 30 minute settlement periods in day represented by date
+func (ah *APIHandler) GetIntensityForDay(date time.Time) ([]*Intensity, error) {
 	year, month, day := date.Date()
 
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d", year, month, day))
@@ -169,7 +176,15 @@ func (ah *APIHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, err
 	return response.entries, nil
 }
 
-func (ah *APIHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, settlementPeriod int) (*IntensityEntry, error) {
+// GetIntensityForDayAndSettlementPeriod returns an Intensity object, for the given 30 minute settlement period (settlementPeriod) in the day represented by date
+// National grid split the day into 48 half-hour settlement periods
+// The periods of the day follow UK local time
+// The settlement periods are 1-index (numbered 1 to 48 inclusive)
+func (ah *APIHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, settlementPeriod int) (*Intensity, error) {
+	if settlementPeriod < 1 || settlementPeriod > 48 {
+		return nil, fmt.Errorf("Invalid settlmentPeriod %d; must be 1 <= settlementPeriod <= 48", settlementPeriod)
+	}
+
 	year, month, day := date.Date()
 
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/date/%04d-%02d-%02d/%d", year, month, day, settlementPeriod))
@@ -189,11 +204,25 @@ func (ah *APIHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, sett
 	return response.entries[0], nil
 }
 
-func (ah *APIHandler) GetTodaysIntensity() ([]*IntensityEntry, error) {
-	return ah.GetIntensityForDay(time.Now())
+// GetTodaysIntensity returns an array of Intensity objects, for all 30 minute settlement periods in the current day
+// I strongly considered implementing this as GetIntensityForDay(time.Now()) but I will use the dedicated /intensity/date resource
+// provided by the API. I would be very interested if the behaviour of these would ever differ (presumably round trip delay could cause this)
+func (ah *APIHandler) GetTodaysIntensity() ([]*Intensity, error) {
+	responseBytes, err := ah.getAPIResponse("/intensity/date")
+	if err != nil {
+		return nil, err
+	}
+
+	response := intensityResponse{}
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	return response.entries, nil
 }
 
-func (ah *APIHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry, error) {
+// GetIntensityForTimePeriod returns an Intensity object, for the 30 minute settlement period containing time
+func (ah *APIHandler) GetIntensityForTimePeriod(time time.Time) (*Intensity, error) {
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s", time.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -211,11 +240,38 @@ func (ah *APIHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry
 	return response.entries[0], nil
 }
 
-func (ah *APIHandler) GetCurrentIntensity() (*IntensityEntry, error) {
-	return ah.GetIntensityForTimePeriod(time.Now())
+// GetCurrentIntensity returns an Intensity object, for the current 30 minute settlement period
+// I strongly considered implementing this as GetIntensityForTimePeriod(time.Now()) but I will use the dedicated /intensity resource
+// provided by the API. I would be very interested if the behaviour of these would ever differ (presumably round trip delay could cause this)
+func (ah *APIHandler) GetCurrentIntensity() (*Intensity, error) {
+	responseBytes, err := ah.getAPIResponse("/intensity")
+	if err != nil {
+		return nil, err
+	}
+
+	response := intensityResponse{}
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	if len(response.entries) != 1 {
+		return nil, fmt.Errorf("Unexpected API response; unexpected number of entries; %s", string(responseBytes))
+	}
+
+	return response.entries[0], nil
 }
 
-func (ah *APIHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*IntensityEntry, error) {
+// GetIntensityBetween returns an array of Intensity objects, for all 30 minute settlement periods between from and to
+// The maximum date range is limited to 30 days
+func (ah *APIHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*Intensity, error) {
+	if !from.Before(to) {
+		return nil, fmt.Errorf("from (%s) must be strictly earlier than to (%s)", from.String(), to.String())
+	}
+
+	if to.Sub(from) > (time.Hour * 24 * 30) {
+		return nil, fmt.Errorf("The maximum date range is limited to 30 days. From (%s) To (%s)", from.String(), to.String())
+	}
+
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -229,10 +285,9 @@ func (ah *APIHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*Inte
 	return response.entries, nil
 }
 
-// The following three could easily be implemented using GetIntensityBetween , but as they are
-// specific resources provided by the REST API, let's have them using those specific resources
-
-func (ah *APIHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+// GetNext24HourIntensity returns an array of Intensity objects, for all 30 minute settlement periods between from and from+24h
+// While this could be implemented using GetIntensityBetween it uses the dedicated /intensity/{from}/fw24h resource
+func (ah *APIHandler) GetNext24HourIntensity(from time.Time) ([]*Intensity, error) {
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/fw24h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -246,7 +301,9 @@ func (ah *APIHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry,
 	return response.entries, nil
 }
 
-func (ah *APIHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+// GetNext48HourIntensity returns an array of Intensity objects, for all 30 minute settlement periods between from and from+48h
+// While this could be implemented using GetIntensityBetween it uses the dedicated /intensity/{from}/fw48h resource
+func (ah *APIHandler) GetNext48HourIntensity(from time.Time) ([]*Intensity, error) {
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/fw48h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -260,7 +317,9 @@ func (ah *APIHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry,
 	return response.entries, nil
 }
 
-func (ah *APIHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry, error) {
+// GetPrior24HourIntensity returns an array of Intensity objects, for all 30 minute settlement periods between from-24h and from
+// While this could be implemented using GetIntensityBetween it uses the dedicated /intensity/{from}/pt24h resource
+func (ah *APIHandler) GetPrior24HourIntensity(from time.Time) ([]*Intensity, error) {
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/%s/pt24h", from.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -274,6 +333,7 @@ func (ah *APIHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry
 	return response.entries, nil
 }
 
+// GetIntensityFactors gets an IntensityFactors struct
 func (ah *APIHandler) GetIntensityFactors() (*IntensityFactors, error) {
 	responseBytes, err := ah.getAPIResponse("/intensity/factors")
 	if err != nil {
@@ -336,7 +396,7 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 	}
 
 	decodedData := decoded["data"].([]interface{})
-	sr.entries = make([]*StatisticsEntry, 0, len(decodedData))
+	sr.entries = make([]*Statistics, 0, len(decodedData))
 
 	for _, value := range decodedData {
 		decodedDataEntry := value.(map[string]interface{})
@@ -353,14 +413,12 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 
 		decodedIntensity := decodedDataEntry["intensity"].(map[string]interface{})
 
-		newEntry := &StatisticsEntry{To: toTime,
-			From: fromTime,
-			Stats: Statistics{
-				Max:     unmarshalInt(decodedIntensity["max"], -1),
-				Average: unmarshalInt(decodedIntensity["average"], -1),
-				Min:     unmarshalInt(decodedIntensity["min"], -1),
-				Index:   decodedIntensity["index"].(string),
-			},
+		newEntry := &Statistics{To: toTime,
+			From:    fromTime,
+			Max:     unmarshalInt(decodedIntensity["max"], -1),
+			Average: unmarshalInt(decodedIntensity["average"], -1),
+			Min:     unmarshalInt(decodedIntensity["min"], -1),
+			Index:   decodedIntensity["index"].(string),
 		}
 
 		sr.entries = append(sr.entries, newEntry)
@@ -369,12 +427,22 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (se *StatisticsEntry) String() string {
+func (se *Statistics) String() string {
 	return fmt.Sprintf("%s -> %s {max: %d, average: %d, min %d, index: %s}", se.From.Format(natGridTimeFormat), se.To.Format(natGridTimeFormat),
-		se.Stats.Max, se.Stats.Average, se.Stats.Min, se.Stats.Index)
+		se.Max, se.Average, se.Min, se.Index)
 }
 
-func (ah *APIHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEntry, error) {
+// GetStatistics returns a Statistics object giving carbon intensity statistics for the period between from and to
+// The maximum date range is limited to 30 days
+func (ah *APIHandler) GetStatistics(from time.Time, to time.Time) (*Statistics, error) {
+	if !from.Before(to) {
+		return nil, fmt.Errorf("from (%s) must be strictly earlier than to (%s)", from.String(), to.String())
+	}
+
+	if to.Sub(from) > (time.Hour * 24 * 30) {
+		return nil, fmt.Errorf("The maximum date range is limited to 30 days. From (%s) To (%s)", from.String(), to.String())
+	}
+
 	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/stats/%s/%s", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat)))
 	if err != nil {
 		return nil, err
@@ -392,8 +460,27 @@ func (ah *APIHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEn
 	return response.entries[0], nil
 }
 
-func (ah *APIHandler) GetStatisticsInBlocks(from time.Time, to time.Time, blockSize time.Duration) ([]*StatisticsEntry, error) {
-	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/stats/%s/%s/%d", from.Format(natGridTimeFormat), to.Format(natGridTimeFormat), int(blockSize.Hours())))
+// GetStatisticsInBlocks returns an array of Statistics object giving carbon intensity statistics for the period between from and to
+// Each Statistic object in the array covers a period of time given by blockSize
+// The maximum date range is limited to 30 days
+// The block size given by blockSize is rounded down to the nearest hour and must be between 1 and 24 inclusive
+func (ah *APIHandler) GetStatisticsInBlocks(from time.Time, to time.Time, blockSize time.Duration) ([]*Statistics, error) {
+	if !from.Before(to) {
+		return nil, fmt.Errorf("from (%s) must be strictly earlier than to (%s)", from.String(), to.String())
+	}
+
+	if to.Sub(from) > (time.Hour * 24 * 30) {
+		return nil, fmt.Errorf("The maximum date range is limited to 30 days. From (%s) To (%s)", from.String(), to.String())
+	}
+
+	blockSizeHours := int(blockSize.Hours())
+
+	if blockSizeHours < 1 || blockSizeHours > 24 {
+		return nil, fmt.Errorf("Invalid blocksize %s; must be between 1 and 24 hours inclusive", blockSize.String())
+	}
+
+	responseBytes, err := ah.getAPIResponse(fmt.Sprintf("/intensity/stats/%s/%s/%d", from.Format(natGridTimeFormat),
+		to.Format(natGridTimeFormat), blockSizeHours))
 	if err != nil {
 		return nil, err
 	}
