@@ -10,7 +10,7 @@ import (
 
 const (
 	natGridServerAddress = "https://api.carbonintensity.org.uk"
-	natGridTimeFormat = "2006-01-02T15:04Z07:00"
+	natGridTimeFormat    = "2006-01-02T15:04Z07:00"
 
 	indexLow      = "low"
 	indexModerate = "moderate"
@@ -42,8 +42,8 @@ type statisticsResponse struct {
 }
 
 type StatisticsEntry struct {
-	From      time.Time
-	To        time.Time
+	From  time.Time
+	To    time.Time
 	Stats Statistics
 }
 
@@ -55,20 +55,20 @@ type Statistics struct {
 }
 
 type IntensityFactors struct {
-	Biomass int
-	Coal int
-    DutchImports int
-	FrenchImports int
-	IrishImports int
-    GasCombinedCycle int
-    GasOpenCycle int
-    Hydro int
-    Nuclear int
-    Oil int
-    Other int
-    PumpedStorage int
-    Solar int
-    Wind int
+	Biomass          int
+	Coal             int
+	DutchImports     int
+	FrenchImports    int
+	IrishImports     int
+	GasCombinedCycle int
+	GasOpenCycle     int
+	Hydro            int
+	Nuclear          int
+	Oil              int
+	Other            int
+	PumpedStorage    int
+	Solar            int
+	Wind             int
 }
 
 func NewCarbonIntensityApiHandler() *ApiHandler {
@@ -93,7 +93,7 @@ func unmarshalInt(val interface{}, valIfNil int) int {
 func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 	var decoded map[string]interface{}
 	if err := json.Unmarshal(data, &decoded); err != nil {
-        return err
+		return err
 	}
 
 	if decoded["data"] == nil {
@@ -127,8 +127,8 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 			From: fromTime,
 			Intensity: Intensity{
 				Forecast: unmarshalInt(decodedIntensity["forecast"], -1),
-				Actual: unmarshalInt(decodedIntensity["actual"], -1),
-				Index: decodedIntensity["index"].(string),
+				Actual:   unmarshalInt(decodedIntensity["actual"], -1),
+				Index:    decodedIntensity["index"].(string),
 			},
 		}
 
@@ -139,7 +139,7 @@ func (ir *intensityResponse) UnmarshalJSON(data []byte) error {
 }
 
 func (ie *IntensityEntry) String() string {
-	return fmt.Sprintf("%s -> %s {forecast: %d, actual: %d, index: %s}", ie.From.Format(natGridTimeFormat), ie.To.Format(natGridTimeFormat), 
+	return fmt.Sprintf("%s -> %s {forecast: %d, actual: %d, index: %s}", ie.From.Format(natGridTimeFormat), ie.To.Format(natGridTimeFormat),
 		ie.Intensity.Forecast, ie.Intensity.Actual, ie.Intensity.Index)
 }
 
@@ -163,7 +163,7 @@ func (ah *ApiHandler) GetIntensityForDay(date time.Time) ([]*IntensityEntry, err
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
@@ -179,7 +179,7 @@ func (ah *ApiHandler) GetIntensityForDayAndSettlementPeriod(date time.Time, sett
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	if len(response.entries) != 1 {
@@ -201,7 +201,7 @@ func (ah *ApiHandler) GetIntensityForTimePeriod(time time.Time) (*IntensityEntry
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	if len(response.entries) != 1 {
@@ -223,7 +223,7 @@ func (ah *ApiHandler) GetIntensityBetween(from time.Time, to time.Time) ([]*Inte
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
@@ -240,7 +240,7 @@ func (ah *ApiHandler) GetNext24HourIntensity(from time.Time) ([]*IntensityEntry,
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
@@ -254,7 +254,7 @@ func (ah *ApiHandler) GetNext48HourIntensity(from time.Time) ([]*IntensityEntry,
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
@@ -268,7 +268,7 @@ func (ah *ApiHandler) GetPrior24HourIntensity(from time.Time) ([]*IntensityEntry
 
 	response := intensityResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
@@ -282,7 +282,7 @@ func (ah *ApiHandler) GetIntensityFactors() (*IntensityFactors, error) {
 
 	var response map[string]interface{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	if response["data"] == nil {
@@ -302,28 +302,28 @@ func (ah *ApiHandler) GetIntensityFactors() (*IntensityFactors, error) {
 
 	factorDict := responseData[0].(map[string]interface{})
 
-	return &IntensityFactors {
-		Biomass: int(factorDict["Biomass"].(float64)),
-		Coal: int(factorDict["Coal"].(float64)),
-		DutchImports: int(factorDict["Dutch Imports"].(float64)),
-		FrenchImports: int(factorDict["French Imports"].(float64)),
+	return &IntensityFactors{
+		Biomass:          int(factorDict["Biomass"].(float64)),
+		Coal:             int(factorDict["Coal"].(float64)),
+		DutchImports:     int(factorDict["Dutch Imports"].(float64)),
+		FrenchImports:    int(factorDict["French Imports"].(float64)),
 		GasCombinedCycle: int(factorDict["Gas (Combined Cycle)"].(float64)),
-		GasOpenCycle: int(factorDict["Gas (Open Cycle)"].(float64)),
-		Hydro: int(factorDict["Hydro"].(float64)),
-		IrishImports: int(factorDict["Irish Imports"].(float64)),
-		Nuclear: int(factorDict["Nuclear"].(float64)),
-		Oil: int(factorDict["Oil"].(float64)),
-		Other: int(factorDict["Other"].(float64)),
-		PumpedStorage: int(factorDict["Pumped Storage"].(float64)),
-		Solar: int(factorDict["Solar"].(float64)),
-		Wind: int(factorDict["Wind"].(float64)),
+		GasOpenCycle:     int(factorDict["Gas (Open Cycle)"].(float64)),
+		Hydro:            int(factorDict["Hydro"].(float64)),
+		IrishImports:     int(factorDict["Irish Imports"].(float64)),
+		Nuclear:          int(factorDict["Nuclear"].(float64)),
+		Oil:              int(factorDict["Oil"].(float64)),
+		Other:            int(factorDict["Other"].(float64)),
+		PumpedStorage:    int(factorDict["Pumped Storage"].(float64)),
+		Solar:            int(factorDict["Solar"].(float64)),
+		Wind:             int(factorDict["Wind"].(float64)),
 	}, nil
 }
 
 func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 	var decoded map[string]interface{}
 	if err := json.Unmarshal(data, &decoded); err != nil {
-        return err
+		return err
 	}
 
 	if decoded["data"] == nil {
@@ -356,10 +356,10 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 		newEntry := &StatisticsEntry{To: toTime,
 			From: fromTime,
 			Stats: Statistics{
-				Max: unmarshalInt(decodedIntensity["max"], -1),
+				Max:     unmarshalInt(decodedIntensity["max"], -1),
 				Average: unmarshalInt(decodedIntensity["average"], -1),
-				Min: unmarshalInt(decodedIntensity["min"], -1),
-				Index: decodedIntensity["index"].(string),
+				Min:     unmarshalInt(decodedIntensity["min"], -1),
+				Index:   decodedIntensity["index"].(string),
 			},
 		}
 
@@ -370,8 +370,8 @@ func (sr *statisticsResponse) UnmarshalJSON(data []byte) error {
 }
 
 func (se *StatisticsEntry) String() string {
-	return fmt.Sprintf("%s -> %s {max: %d, average: %d, min %d, index: %s}", se.From.Format(natGridTimeFormat), se.To.Format(natGridTimeFormat), 
-	se.Stats.Max, se.Stats.Average, se.Stats.Min, se.Stats.Index)
+	return fmt.Sprintf("%s -> %s {max: %d, average: %d, min %d, index: %s}", se.From.Format(natGridTimeFormat), se.To.Format(natGridTimeFormat),
+		se.Stats.Max, se.Stats.Average, se.Stats.Min, se.Stats.Index)
 }
 
 func (ah *ApiHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEntry, error) {
@@ -382,7 +382,7 @@ func (ah *ApiHandler) GetStatistics(from time.Time, to time.Time) (*StatisticsEn
 
 	response := statisticsResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	if len(response.entries) != 1 {
@@ -400,7 +400,7 @@ func (ah *ApiHandler) GetStatisticsInBlocks(from time.Time, to time.Time, blockS
 
 	response := statisticsResponse{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	return response.entries, nil
